@@ -17,28 +17,13 @@
   <script>
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function logScan(linkId) {
-      try {
-        await fetch(SUPABASE_URL + '/rest/v1/scans', {
-          method: 'POST',
-          headers: {
-            'apikey': SUPABASE_ANON_KEY,
-            'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
-            'Content-Type': 'application/json',
-            'Prefer': 'return=minimal'
-          },
-          body: JSON.stringify({ link_id: linkId })
-        });
-      } catch (e) {
-        // On ne bloque jamais la redirection même si l'enregistrement échoue
-      }
-    }
-
     async function go() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('c');
       if (!code) return;
 
+      // Le scan est déjà enregistré côté serveur (si le suivi est activé)
+      // au moment de cet appel — plus besoin d'un second appel séparé.
       const { data, error } = await sb.rpc('resolve_link', { p_code: code });
       const row = Array.isArray(data) ? data[0] : data;
 
@@ -47,10 +32,6 @@
         msg.textContent = 'Lien invalide.';
         msg.style.display = 'block';
         return;
-      }
-
-      if (row.track_enabled) {
-        await logScan(row.link_id);
       }
 
       window.location.replace('https://search.google.com/local/writereview?placeid=' + encodeURIComponent(row.place_id));
