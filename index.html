@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion — Mes plaques NFC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="center-page">
+    <div class="pulse">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring delay"></div>
+      <div class="pulse-ring delay2"></div>
+      <div class="pulse-core"></div>
+    </div>
+    <div class="card" style="width:100%; max-width:380px;">
+      <h1 style="margin-top:0;">Connexion</h1>
+      <p class="muted" style="margin-top:-12px; margin-bottom:20px;">Accède à ton espace admin.</p>
+
+      <label for="email">Adresse e-mail</label>
+      <input type="email" id="email" autocomplete="username">
+
+      <label for="password">Mot de passe</label>
+      <input type="password" id="password" autocomplete="current-password">
+
+      <div class="error" id="error"></div>
+
+      <button class="btn-primary" id="login-btn">Se connecter</button>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const errorEl = document.getElementById('error');
+    const btn = document.getElementById('login-btn');
+
+    async function redirectIfLoggedIn() {
+      const { data } = await supabase.auth.getSession();
+      if (data.session) window.location.href = 'admin.html';
+    }
+    redirectIfLoggedIn();
+
+    async function login() {
+      errorEl.textContent = '';
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      if (!email || !password) {
+        errorEl.textContent = 'Renseigne l\'e-mail et le mot de passe.';
+        return;
+      }
+      btn.disabled = true;
+      btn.textContent = 'Connexion...';
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      btn.disabled = false;
+      btn.textContent = 'Se connecter';
+      if (error) {
+        errorEl.textContent = 'E-mail ou mot de passe incorrect.';
+        return;
+      }
+      window.location.href = 'admin.html';
+    }
+
+    btn.addEventListener('click', login);
+    document.getElementById('password').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') login();
+    });
+  </script>
+</body>
+</html>
