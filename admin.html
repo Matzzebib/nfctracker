@@ -60,7 +60,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script>
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     let links = [];
     let scans = [];
 
@@ -82,7 +82,7 @@
     }
 
     async function requireSession() {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await sb.auth.getSession();
       if (!data.session) window.location.href = 'index.html';
     }
 
@@ -173,7 +173,7 @@
           const current = links.find(l => l.id === id);
           const name = prompt('Nouveau nom pour ce lien :', current.client_name);
           if (!name) return;
-          await supabase.from('links').update({ client_name: name }).eq('id', id);
+          await sb.from('links').update({ client_name: name }).eq('id', id);
           loadData();
         });
       });
@@ -182,7 +182,7 @@
         btn.addEventListener('click', async (e) => {
           const id = e.target.closest('.link-item').dataset.id;
           const current = links.find(l => l.id === id);
-          await supabase.from('links').update({ active: !current.active }).eq('id', id);
+          await sb.from('links').update({ active: !current.active }).eq('id', id);
           loadData();
         });
       });
@@ -192,7 +192,7 @@
           const id = e.target.closest('.link-item').dataset.id;
           const current = links.find(l => l.id === id);
           if (!confirm('Supprimer le lien "' + current.client_name + '" ? Cette action est définitive.')) return;
-          await supabase.from('links').delete().eq('id', id);
+          await sb.from('links').delete().eq('id', id);
           loadData();
         });
       });
@@ -216,7 +216,7 @@
       }
 
       const code = genCode();
-      const { error } = await supabase.from('links').insert({
+      const { error } = await sb.from('links').insert({
         code, client_name: clientName, place_id: placeId
       });
 
@@ -232,7 +232,7 @@
     });
 
     document.getElementById('logout-btn').addEventListener('click', async () => {
-      await supabase.auth.signOut();
+      await sb.auth.signOut();
       window.location.href = 'index.html';
     });
 
