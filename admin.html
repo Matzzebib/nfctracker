@@ -74,6 +74,10 @@
       return baseUrl() + 'r.html?c=' + encodeURIComponent(code);
     }
 
+    function directUrl(placeId) {
+      return 'https://search.google.com/local/writereview?placeid=' + encodeURIComponent(placeId);
+    }
+
     function genCode() {
       const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
       let out = '';
@@ -151,24 +155,34 @@
       }
 
       container.innerHTML = links.map(l => {
-        const url = linkUrl(l.code);
+        const trackedUrl = linkUrl(l.code);
+        const rawUrl = directUrl(l.place_id);
         const stats = scanStatsFor(l.id);
         const badge = l.active
           ? '<span class="badge badge-ok">actif</span>'
           : '<span class="badge badge-off">désactivé</span>';
+        const trackBadge = l.track_enabled
+          ? '<span class="badge badge-ok">suivi ON</span>'
+          : '<span class="badge badge-off">suivi OFF</span>';
         return `
           <div class="link-item" data-id="${l.id}">
-            <div class="link-name">${escapeHtml(l.client_name)}${badge}</div>
-            <div class="link-meta">${url}<br>Place ID : ${escapeHtml(l.place_id)}</div>
+            <div class="link-name">${escapeHtml(l.client_name)}${badge}${trackBadge}</div>
+            <div class="link-meta">
+              Lien traqué (à mettre sur la carte NFC) :<br>${trackedUrl}<br><br>
+              Lien direct (sans suivi, ne compte jamais) :<br>${rawUrl}<br><br>
+              Place ID : ${escapeHtml(l.place_id)}
+            </div>
             <div class="link-stats">
               <div><span class="link-stats-value">${stats.d7}</span><span class="link-stats-label">7 jours</span></div>
               <div><span class="link-stats-value">${stats.d30}</span><span class="link-stats-label">30 jours</span></div>
               <div><span class="link-stats-value">${stats.total}</span><span class="link-stats-label">total</span></div>
             </div>
             <div class="btn-row">
-              <button class="btn-secondary btn-copy" data-url="${url}">Copier le lien</button>
+              <button class="btn-secondary btn-copy" data-url="${trackedUrl}">Copier le lien traqué</button>
+              <button class="btn-secondary btn-copy" data-url="${rawUrl}">Copier le lien direct</button>
               <button class="btn-secondary btn-rename">Renommer</button>
-              <button class="btn-secondary btn-toggle">${l.active ? 'Désactiver' : 'Activer'}</button>
+              <button class="btn-secondary btn-tracking">${l.track_enabled ? 'Désactiver le suivi' : 'Activer le suivi'}</button>
+              <button class="btn-secondary btn-toggle">${l.active ? 'Désactiver le lien' : 'Activer le lien'}</button>
               <button class="btn-secondary btn-reset">Réinitialiser les compteurs</button>
               <button class="btn-danger btn-delete">Supprimer</button>
             </div>
@@ -179,8 +193,18 @@
       container.querySelectorAll('.btn-copy').forEach(btn => {
         btn.addEventListener('click', () => {
           navigator.clipboard.writeText(btn.dataset.url);
+          const original = btn.textContent;
           btn.textContent = 'Copié !';
-          setTimeout(() => btn.textContent = 'Copier le lien', 1500);
+          setTimeout(() => btn.textContent = original, 1500);
+        });
+      });
+
+      container.querySelectorAll('.btn-tracking').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.closest('.link-item').dataset.id;
+          const current = links.find(l => l.id === id);
+          await sb.from('links').update({ track_enabled: !current.track_enabled }).eq('id', id);
+          loadData();
         });
       });
 
@@ -270,4 +294,3 @@
   </script>
 </body>
 </html>
-
