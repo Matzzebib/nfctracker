@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=2">
+<link rel="stylesheet" href="styles.css?v=3">
 </head>
 <body>
   <div class="wrap">
@@ -169,6 +169,7 @@
               <button class="btn-secondary btn-copy" data-url="${url}">Copier le lien</button>
               <button class="btn-secondary btn-rename">Renommer</button>
               <button class="btn-secondary btn-toggle">${l.active ? 'Désactiver' : 'Activer'}</button>
+              <button class="btn-secondary btn-reset">Réinitialiser les compteurs</button>
               <button class="btn-danger btn-delete">Supprimer</button>
             </div>
           </div>
@@ -199,6 +200,16 @@
           const id = e.target.closest('.link-item').dataset.id;
           const current = links.find(l => l.id === id);
           await sb.from('links').update({ active: !current.active }).eq('id', id);
+          loadData();
+        });
+      });
+
+      container.querySelectorAll('.btn-reset').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.closest('.link-item').dataset.id;
+          const current = links.find(l => l.id === id);
+          if (!confirm('Réinitialiser les compteurs de "' + current.client_name + '" ? Les scans déjà enregistrés seront définitivement effacés.')) return;
+          await sb.from('scans').delete().eq('link_id', id);
           loadData();
         });
       });
@@ -259,3 +270,4 @@
   </script>
 </body>
 </html>
+
