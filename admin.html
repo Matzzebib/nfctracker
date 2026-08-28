@@ -131,6 +131,18 @@
       return scans.filter(s => s.link_id === linkId).length;
     }
 
+    function scanStatsFor(linkId) {
+      const now = Date.now();
+      const d7 = now - 7 * 24 * 3600 * 1000;
+      const d30 = now - 30 * 24 * 3600 * 1000;
+      const linkScans = scans.filter(s => s.link_id === linkId);
+      return {
+        d7: linkScans.filter(s => new Date(s.scanned_at).getTime() >= d7).length,
+        d30: linkScans.filter(s => new Date(s.scanned_at).getTime() >= d30).length,
+        total: linkScans.length
+      };
+    }
+
     function renderLinks() {
       const container = document.getElementById('links-list');
       if (links.length === 0) {
@@ -140,7 +152,7 @@
 
       container.innerHTML = links.map(l => {
         const url = linkUrl(l.code);
-        const count = scanCountFor(l.id);
+        const stats = scanStatsFor(l.id);
         const badge = l.active
           ? '<span class="badge badge-ok">actif</span>'
           : '<span class="badge badge-off">désactivé</span>';
@@ -148,7 +160,11 @@
           <div class="link-item" data-id="${l.id}">
             <div class="link-name">${escapeHtml(l.client_name)}${badge}</div>
             <div class="link-meta">${url}<br>Place ID : ${escapeHtml(l.place_id)}</div>
-            <div class="muted" style="font-size:0.85rem; margin-bottom:10px;">${count} scan${count > 1 ? 's' : ''} au total</div>
+            <div class="link-stats">
+              <div><span class="link-stats-value">${stats.d7}</span><span class="link-stats-label">7 jours</span></div>
+              <div><span class="link-stats-value">${stats.d30}</span><span class="link-stats-label">30 jours</span></div>
+              <div><span class="link-stats-value">${stats.total}</span><span class="link-stats-label">total</span></div>
+            </div>
             <div class="btn-row">
               <button class="btn-secondary btn-copy" data-url="${url}">Copier le lien</button>
               <button class="btn-secondary btn-rename">Renommer</button>
