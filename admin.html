@@ -87,7 +87,7 @@
     }
 
     async function loadData() {
-      const { data: linkRows, error: linkErr } = await supabase
+      const { data: linkRows, error: linkErr } = await sb
         .from('links')
         .select('*')
         .order('created_at', { ascending: false });
@@ -96,7 +96,7 @@
 
       if (links.length > 0) {
         const ids = links.map(l => l.id);
-        const { data: scanRows, error: scanErr } = await supabase
+        const { data: scanRows, error: scanErr } = await sb
           .from('scans')
           .select('link_id, scanned_at')
           .in('link_id', ids);
