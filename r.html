@@ -3,50 +3,37 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Redirection...</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<title></title>
+<style>
+  html, body { margin: 0; padding: 0; background: #ffffff; height: 100%; }
+  #msg { display: none; font-family: sans-serif; color: #999; text-align: center; padding-top: 40vh; }
+</style>
 </head>
 <body>
-  <div class="center-page">
-    <div class="pulse">
-      <div class="pulse-ring"></div>
-      <div class="pulse-ring delay"></div>
-      <div class="pulse-ring delay2"></div>
-      <div class="pulse-core"></div>
-    </div>
-    <div id="msg" class="muted">Redirection en cours...</div>
-  </div>
+  <div id="msg"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script>
     const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    const msg = document.getElementById('msg');
 
     async function go() {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('c');
-      if (!code) {
-        msg.textContent = 'Lien invalide.';
-        return;
-      }
+      if (!code) return;
 
       const { data, error } = await sb.rpc('resolve_link', { p_code: code });
       const row = Array.isArray(data) ? data[0] : data;
 
       if (error || !row || !row.active) {
-        msg.textContent = 'Ce lien est invalide ou désactivé.';
+        const msg = document.getElementById('msg');
+        msg.textContent = 'Lien invalide.';
+        msg.style.display = 'block';
         return;
       }
 
-      // Enregistre le scan (sans bloquer trop longtemps la redirection)
-      try {
-        await sb.from('scans').insert({ link_id: row.link_id });
-      } catch (e) {
-        // même en cas d'échec du log, on redirige quand même
-      }
-
+      // Redirection immédiate : on n'attend pas la fin de l'enregistrement du scan
+      sb.from('scans').insert({ link_id: row.link_id });
       window.location.replace('https://search.google.com/local/writereview?placeid=' + encodeURIComponent(row.place_id));
     }
 
