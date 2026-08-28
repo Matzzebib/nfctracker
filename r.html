@@ -21,7 +21,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script>
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
     const msg = document.getElementById('msg');
 
     async function go() {
@@ -32,7 +32,7 @@
         return;
       }
 
-      const { data, error } = await supabase.rpc('resolve_link', { p_code: code });
+      const { data, error } = await sb.rpc('resolve_link', { p_code: code });
       const row = Array.isArray(data) ? data[0] : data;
 
       if (error || !row || !row.active) {
@@ -42,7 +42,7 @@
 
       // Enregistre le scan (sans bloquer trop longtemps la redirection)
       try {
-        await supabase.from('scans').insert({ link_id: row.link_id });
+        await sb.from('scans').insert({ link_id: row.link_id });
       } catch (e) {
         // même en cas d'échec du log, on redirige quand même
       }
