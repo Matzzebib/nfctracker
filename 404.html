@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="UTF-8"><title>Redirection...</title></head>
+<body>
+<script>
+  // GitHub Pages sert cette page pour toute URL qui n'existe pas en tant que
+  // fichier réel. On récupère le dernier segment de l'URL (le code du lien)
+  // et on redirige vers r.html?c=code, qui fait le vrai travail.
+  // Ça permet d'utiliser des liens propres comme tondomaine.com/a1
+  // au lieu de tondomaine.com/r.html?c=a1 (les deux fonctionnent).
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  const code = parts[parts.length - 1] || '';
+  const base = parts.slice(0, -1).join('/');
+  const prefix = base ? '/' + base : '';
+  window.location.replace(prefix + '/r.html?c=' + encodeURIComponent(code));
+</script>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Redirection...</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="center-page">
+    <div class="pulse">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring delay"></div>
+      <div class="pulse-ring delay2"></div>
+      <div class="pulse-core"></div>
+    </div>
+    <div id="msg" class="muted">Redirection en cours...</div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const msg = document.getElementById('msg');
+
+    async function go() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('c');
+      if (!code) {
+        msg.textContent = 'Lien invalide.';
+        return;
+      }
+
+      const { data, error } = await supabase.rpc('resolve_link', { p_code: code });
+      const row = Array.isArray(data) ? data[0] : data;
+
+      if (error || !row || !row.active) {
+        msg.textContent = 'Ce lien est invalide ou désactivé.';
+        return;
+      }
+
+      // Enregistre le scan (sans bloquer trop longtemps la redirection)
+      try {
+        await supabase.from('scans').insert({ link_id: row.link_id });
+      } catch (e) {
+        // même en cas d'échec du log, on redirige quand même
+      }
+
+      window.location.replace('https://search.google.com/local/writereview?placeid=' + encodeURIComponent(row.place_id));
+    }
+
+    go();
+  </script>
+</body>
+</html>

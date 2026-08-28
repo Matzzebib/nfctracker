@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mes plaques NFC</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="wrap">
+    <div class="top-bar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#060711" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8.32a7.43 7.43 0 0 1 0 10.36"/><path d="M9.46 6.21a11.76 11.76 0 0 1 0 14.58"/><path d="M12.91 4.1a16.09 16.09 0 0 1 .01 18.8"/><path d="M16.37 2a20.42 20.42 0 0 1 0 23"/></svg>
+        </div>
+        <h1 style="margin:0;">Mes plaques</h1>
+      </div>
+      <button class="btn-secondary" id="logout-btn">Déconnexion</button>
+    </div>
+
+    <div class="grid-2">
+      <div class="card">
+        <div class="stat-label">Scans 7 jours</div>
+        <div class="stat-value" id="stat-7">—</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Scans 30 jours</div>
+        <div class="stat-value" id="stat-30">—</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Total scans</div>
+        <div class="stat-value" id="stat-total">—</div>
+      </div>
+      <div class="card">
+        <div class="stat-label">Liens actifs</div>
+        <div class="stat-value" id="stat-active">—</div>
+        <div class="muted" id="stat-active-sub" style="font-size:0.85rem;"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0; font-size:1.1rem;">Créer un lien</h2>
+      <label for="new-client">Nom du client (pour t'y retrouver)</label>
+      <input type="text" id="new-client" placeholder="Ex: Boulangerie Martin">
+      <label for="new-placeid">Place ID Google</label>
+      <input type="text" id="new-placeid" placeholder="Ex: ChIJN1t_tDeuEmsRUsoyG83frY4">
+      <div class="error" id="create-error"></div>
+      <button class="btn-primary" id="create-btn">Créer le lien</button>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-top:0; font-size:1.1rem;">Liens créés</h2>
+      <div id="links-list"><div class="empty">Chargement...</div></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script>
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    let links = [];
+    let scans = [];
+
+    function baseUrl() {
+      // Gère à la fois un domaine perso (racine) et un dépôt GitHub Pages (sous-dossier)
+      const path = window.location.pathname.replace(/admin\.html$/, '');
+      return window.location.origin + path;
+    }
+
+    function linkUrl(code) {
+      return baseUrl() + 'r.html?c=' + encodeURIComponent(code);
+    }
+
+    function genCode() {
+      const chars = 'abcdefghijkmnpqrstuvwxyz23456789';
+      let out = '';
+      for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+      return out;
+    }
+
+    async function requireSession() {
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) window.location.href = 'index.html';
+    }
+
+    async function loadData() {
+      const { data: linkRows, error: linkErr } = await supabase
+        .from('links')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (linkErr) { console.error(linkErr); return; }
+      links = linkRows || [];
+
+      if (links.length > 0) {
+        const ids = links.map(l => l.id);
+        const { data: scanRows, error: scanErr } = await supabase
+          .from('scans')
+          .select('link_id, scanned_at')
+          .in('link_id', ids);
+        if (!scanErr) scans = scanRows || [];
+      } else {
+        scans = [];
+      }
+
+      renderStats();
+      renderLinks();
+    }
+
+    function renderStats() {
+      const now = Date.now();
+      const d7 = now - 7 * 24 * 3600 * 1000;
+      const d30 = now - 30 * 24 * 3600 * 1000;
+
+      const count7 = scans.filter(s => new Date(s.scanned_at).getTime() >= d7).length;
+      const count30 = scans.filter(s => new Date(s.scanned_at).getTime() >= d30).length;
+
+      document.getElementById('stat-7').textContent = count7;
+      document.getElementById('stat-30').textContent = count30;
+      document.getElementById('stat-total').textContent = scans.length;
+
+      const activeCount = links.filter(l => l.active).length;
+      document.getElementById('stat-active').textContent = activeCount;
+      document.getElementById('stat-active-sub').textContent =
+        'sur ' + links.length + ' lien' + (links.length > 1 ? 's' : '') + ' créé' + (links.length > 1 ? 's' : '');
+    }
+
+    function scanCountFor(linkId) {
+      return scans.filter(s => s.link_id === linkId).length;
+    }
+
+    function renderLinks() {
+      const container = document.getElementById('links-list');
+      if (links.length === 0) {
+        container.innerHTML = '<div class="empty">Aucun lien pour l\'instant. Crée ton premier lien ci-dessus.</div>';
+        return;
+      }
+
+      container.innerHTML = links.map(l => {
+        const url = linkUrl(l.code);
+        const count = scanCountFor(l.id);
+        const badge = l.active
+          ? '<span class="badge badge-ok">actif</span>'
+          : '<span class="badge badge-off">désactivé</span>';
+        return `
+          <div class="link-item" data-id="${l.id}">
+            <div class="link-name">${escapeHtml(l.client_name)}${badge}</div>
+            <div class="link-meta">${url}<br>Place ID : ${escapeHtml(l.place_id)}</div>
+            <div class="muted" style="font-size:0.85rem; margin-bottom:10px;">${count} scan${count > 1 ? 's' : ''} au total</div>
+            <div class="btn-row">
+              <button class="btn-secondary btn-copy" data-url="${url}">Copier le lien</button>
+              <button class="btn-secondary btn-rename">Renommer</button>
+              <button class="btn-secondary btn-toggle">${l.active ? 'Désactiver' : 'Activer'}</button>
+              <button class="btn-danger btn-delete">Supprimer</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.btn-copy').forEach(btn => {
+        btn.addEventListener('click', () => {
+          navigator.clipboard.writeText(btn.dataset.url);
+          btn.textContent = 'Copié !';
+          setTimeout(() => btn.textContent = 'Copier le lien', 1500);
+        });
+      });
+
+      container.querySelectorAll('.btn-rename').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.closest('.link-item').dataset.id;
+          const current = links.find(l => l.id === id);
+          const name = prompt('Nouveau nom pour ce lien :', current.client_name);
+          if (!name) return;
+          await supabase.from('links').update({ client_name: name }).eq('id', id);
+          loadData();
+        });
+      });
+
+      container.querySelectorAll('.btn-toggle').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.closest('.link-item').dataset.id;
+          const current = links.find(l => l.id === id);
+          await supabase.from('links').update({ active: !current.active }).eq('id', id);
+          loadData();
+        });
+      });
+
+      container.querySelectorAll('.btn-delete').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const id = e.target.closest('.link-item').dataset.id;
+          const current = links.find(l => l.id === id);
+          if (!confirm('Supprimer le lien "' + current.client_name + '" ? Cette action est définitive.')) return;
+          await supabase.from('links').delete().eq('id', id);
+          loadData();
+        });
+      });
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    document.getElementById('create-btn').addEventListener('click', async () => {
+      const errorEl = document.getElementById('create-error');
+      errorEl.textContent = '';
+      const clientName = document.getElementById('new-client').value.trim();
+      const placeId = document.getElementById('new-placeid').value.trim();
+
+      if (!clientName || !placeId) {
+        errorEl.textContent = 'Renseigne le nom du client et le Place ID.';
+        return;
+      }
+
+      const code = genCode();
+      const { error } = await supabase.from('links').insert({
+        code, client_name: clientName, place_id: placeId
+      });
+
+      if (error) {
+        errorEl.textContent = 'Erreur lors de la création du lien.';
+        console.error(error);
+        return;
+      }
+
+      document.getElementById('new-client').value = '';
+      document.getElementById('new-placeid').value = '';
+      loadData();
+    });
+
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await supabase.auth.signOut();
+      window.location.href = 'index.html';
+    });
+
+    (async () => {
+      await requireSession();
+      loadData();
+    })();
+  </script>
+</body>
+</html>
